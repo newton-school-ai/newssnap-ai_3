@@ -1,0 +1,66 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Data (generated, not tracked)
+data/snaps/
+data/sample_articles/
+data/cache/
+
+# Models (large files)
+models/weights/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/.expo/
+frontend/dist/
+frontend/web-build/
+*.tsbuildinfo
+
+# Logs
+*.log
+logs/
+
+# Internal planning (not in repo)
+_internal/
+
+# Firebase credentials
+firebase-credentials.json
+
+# Alembic (keep versions, ignore temp)
+alembic/tmp/
+
+# Redis dump
+dump.rdb
