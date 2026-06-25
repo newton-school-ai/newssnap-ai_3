@@ -1,0 +1,23 @@
+{
+  "name": "Hindustan Times",
+  "base_url": "https://www.hindustantimes.com",
+  "feed_url": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
+  "scrape_type": "rss",
+  "language": "en",
+  "category_slug": "national",
+  "title_selector": "h1.hdg1",
+  "body_selector": "div.storyDetails",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/india-news/": "national",
+    "/world-news/": "international",
+    "/cricket/": "sports",
+    "/business/": "business",
+    "/technology/": "technology",
+    "/entertainment/": "entertainment",
+    "/lifestyle/": "lifestyle",
+    "/education/": "education"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 1
+}
