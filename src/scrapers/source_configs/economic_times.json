@@ -1,0 +1,20 @@
+{
+  "name": "Economic Times",
+  "base_url": "https://economictimes.indiatimes.com",
+  "feed_url": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
+  "scrape_type": "rss",
+  "language": "en",
+  "category_slug": "finance",
+  "title_selector": "h1.artTitle",
+  "body_selector": "div.artText",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/markets/": "finance",
+    "/industry/": "business",
+    "/tech/": "technology",
+    "/jobs/": "jobs",
+    "/wealth/": "finance"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 2
+}

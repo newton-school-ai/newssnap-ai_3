@@ -1,0 +1,22 @@
+{
+  "name": "Aaj Tak",
+  "base_url": "https://www.aajtak.in",
+  "feed_url": "https://www.aajtak.in/feeds-all.xml",
+  "scrape_type": "rss",
+  "language": "hi",
+  "category_slug": "national",
+  "title_selector": "h1.secArticleTitle",
+  "body_selector": "div.story-with-main-sec",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/india/": "national",
+    "/world/": "international",
+    "/sports/": "sports",
+    "/business/": "business",
+    "/entertainment/": "entertainment",
+    "/technology/": "technology",
+    "/education/": "education"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 2
+}

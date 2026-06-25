@@ -1,0 +1,15 @@
+{
+  "name": "ESPN Cricinfo",
+  "base_url": "https://www.espncricinfo.com",
+  "article_list_url": "https://www.espncricinfo.com/latest-cricket-news",
+  "scrape_type": "static",
+  "language": "en",
+  "category_slug": "sports",
+  "article_link_selector": "a.ds-no-tap-higlight",
+  "title_selector": "h1",
+  "body_selector": "div.ds-text-comfortable-s",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {},
+  "rate_limit_seconds": 3,
+  "priority": 2
+}
