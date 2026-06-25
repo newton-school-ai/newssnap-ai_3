@@ -1,0 +1,24 @@
+{
+  "name": "The Hindu",
+  "base_url": "https://www.thehindu.com",
+  "feed_url": "https://www.thehindu.com/feeder/default.rss",
+  "scrape_type": "rss",
+  "language": "en",
+  "category_slug": "national",
+  "title_selector": "h1.title",
+  "body_selector": "div.articlebodycontent",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/news/national/": "national",
+    "/news/international/": "international",
+    "/sport/": "sports",
+    "/business/": "business",
+    "/sci-tech/": "technology",
+    "/entertainment/": "entertainment",
+    "/opinion/": "opinion",
+    "/education/": "education",
+    "/life-and-style/": "lifestyle"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 1
+}

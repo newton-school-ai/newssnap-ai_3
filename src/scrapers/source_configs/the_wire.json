@@ -1,0 +1,24 @@
+{
+  "name": "The Wire",
+  "base_url": "https://thewire.in",
+  "feed_url": "https://thewire.in/feed",
+  "scrape_type": "rss",
+  "language": "en",
+  "category_slug": "politics",
+  "title_selector": "h1.title",
+  "body_selector": "div.grey-text",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/politics/": "politics",
+    "/economy/": "business",
+    "/external-affairs/": "international",
+    "/security/": "defence",
+    "/rights/": "national",
+    "/environment/": "environment",
+    "/health/": "health",
+    "/science/": "science",
+    "/education/": "education"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 2
+}

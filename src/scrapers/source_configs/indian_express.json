@@ -1,0 +1,25 @@
+{
+  "name": "Indian Express",
+  "base_url": "https://indianexpress.com",
+  "feed_url": "https://indianexpress.com/feed/",
+  "scrape_type": "rss",
+  "language": "en",
+  "category_slug": "national",
+  "title_selector": "h1.native_story_title",
+  "body_selector": "div.full-details",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/section/india/": "national",
+    "/section/world/": "international",
+    "/section/political-pulse/": "politics",
+    "/section/sports/": "sports",
+    "/section/business/": "business",
+    "/section/technology/": "technology",
+    "/section/entertainment/": "entertainment",
+    "/section/lifestyle/": "lifestyle",
+    "/section/education/": "education",
+    "/section/opinion/": "opinion"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 1
+}
