@@ -92,3 +92,10 @@ def test_middleware_current_user():
     user = CurrentUser(user_id="abc-123", role="admin")
     assert user.user_id == "abc-123"
     assert user.role == "admin"
+
+
+def test_access_token_default_role():
+    user_id = str(uuid.uuid4())
+    token = create_access_token(user_id)
+    payload = decode_token(token)
+    assert payload["role"] == "reader"

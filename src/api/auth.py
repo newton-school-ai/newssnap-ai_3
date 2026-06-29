@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import os
-import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from src.db.session import get_db
+from src.models.user import User, UserPreference
 from src.utils.auth_utils import create_token_pair, decode_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -20,8 +23,6 @@ GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/au
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
-
-_user_store: dict[str, dict] = {}
 
 
 class TokenResponse(BaseModel):
@@ -57,17 +58,17 @@ def google_login():
 
 
 @router.get("/google/callback")
-async def google_callback(code: str):
-    return await _handle_google_code(code, GOOGLE_REDIRECT_URI)
+async def google_callback(code: str, db: Session = Depends(get_db)):
+    return await _handle_google_code(code, GOOGLE_REDIRECT_URI, db)
 
 
 @router.post("/google/token")
-async def google_token(request: GoogleCallbackRequest):
+async def google_token(request: GoogleCallbackRequest, db: Session = Depends(get_db)):
     redirect_uri = request.redirect_uri or GOOGLE_REDIRECT_URI
-    return await _handle_google_code(request.code, redirect_uri)
+    return await _handle_google_code(request.code, redirect_uri, db)
 
 
-async def _handle_google_code(code: str, redirect_uri: str) -> TokenResponse:
+async def _handle_google_code(code: str, redirect_uri: str, db: Session) -> TokenResponse:
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google OAuth not configured")
 
@@ -104,18 +105,19 @@ async def _handle_google_code(code: str, redirect_uri: str) -> TokenResponse:
     name = profile.get("name", email)
     avatar = profile.get("picture")
 
-    user = _find_or_create_user(google_id=google_id, email=email, name=name, avatar=avatar)
+    user = _find_or_create_user(db, google_id=google_id, email=email, name=name, avatar=avatar)
+    needs_onboarding = db.scalar(select(UserPreference).where(UserPreference.user_id == user.id)) is None
 
-    tokens = create_token_pair(user["id"], user["role"])
+    tokens = create_token_pair(str(user.id), user.role)
     return TokenResponse(
         access_token=tokens["access_token"],
         refresh_token=tokens["refresh_token"],
-        needs_onboarding=user.get("needs_onboarding", False),
+        needs_onboarding=needs_onboarding,
     )
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh_token(request: RefreshRequest):
+def refresh_token(request: RefreshRequest, db: Session = Depends(get_db)):
     payload = decode_token(request.refresh_token)
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
@@ -124,45 +126,29 @@ def refresh_token(request: RefreshRequest):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
 
     user_id = payload.get("sub")
-    user = _user_store.get(user_id, {})
-    role = user.get("role", "reader")
+    user = db.scalar(select(User).where(User.id == user_id))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    tokens = create_token_pair(user_id, role)
+    tokens = create_token_pair(str(user.id), user.role)
     return TokenResponse(
         access_token=tokens["access_token"],
         refresh_token=tokens["refresh_token"],
     )
 
 
-def _find_or_create_user(google_id: str, email: str, name: str, avatar: str | None) -> dict:
-    for user in _user_store.values():
-        if user.get("google_id") == google_id:
-            user["last_login_at"] = datetime.now(timezone.utc).isoformat()
-            return user
+def _find_or_create_user(db: Session, google_id: str, email: str, name: str, avatar: str | None) -> User:
+    user = db.scalar(select(User).where(User.google_id == google_id))
+    if user is None:
+        user = db.scalar(select(User).where(User.email == email))
+        if user is not None:
+            user.google_id = google_id
 
-    for user in _user_store.values():
-        if user.get("email") == email:
-            user["google_id"] = google_id
-            user["avatar_url"] = avatar
-            user["last_login_at"] = datetime.now(timezone.utc).isoformat()
-            return user
+    if user is None:
+        user = User(email=email, display_name=name, avatar_url=avatar, google_id=google_id, role="reader")
+        db.add(user)
 
-    user_id = str(uuid.uuid4())
-    user = {
-        "id": user_id,
-        "email": email,
-        "display_name": name,
-        "avatar_url": avatar,
-        "google_id": google_id,
-        "role": "reader",
-        "is_active": True,
-        "needs_onboarding": True,
-        "last_login_at": datetime.now(timezone.utc).isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _user_store[user_id] = user
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(user)
     return user
-
-
-def get_user_store() -> dict[str, dict]:
-    return _user_store
