@@ -1,0 +1,22 @@
+{
+  "name": "Times of India",
+  "base_url": "https://timesofindia.indiatimes.com",
+  "feed_url": "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+  "scrape_type": "rss",
+  "language": "en",
+  "category_slug": "national",
+  "title_selector": "h1._23498",
+  "body_selector": "div._s30J",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/india/": "national",
+    "/world/": "international",
+    "/sports/": "sports",
+    "/business/": "business",
+    "/technology/": "technology",
+    "/entertainment/": "entertainment",
+    "/life-style/": "lifestyle"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 1
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Gadgets 360",
+  "base_url": "https://www.gadgets360.com",
+  "feed_url": "https://www.gadgets360.com/rss/news",
+  "scrape_type": "rss",
+  "language": "en",
+  "category_slug": "technology",
+  "title_selector": "h1._1XJ4",
+  "body_selector": "div._3WlLe",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/mobiles/": "technology",
+    "/laptops/": "technology",
+    "/apps/": "technology",
+    "/science/": "science",
+    "/auto/": "automobile"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 2
+}

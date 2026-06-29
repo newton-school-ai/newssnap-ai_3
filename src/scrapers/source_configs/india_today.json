@@ -1,0 +1,23 @@
+{
+  "name": "India Today",
+  "base_url": "https://www.indiatoday.in",
+  "feed_url": "https://www.indiatoday.in/rss/home",
+  "scrape_type": "rss",
+  "language": "en",
+  "category_slug": "national",
+  "title_selector": "h1.Story_strytitle__DwMNR",
+  "body_selector": "div.Story_description__fq_4S",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/india/": "national",
+    "/world/": "international",
+    "/sports/": "sports",
+    "/business/": "business",
+    "/technology/": "technology",
+    "/movies/": "entertainment",
+    "/education-today/": "education",
+    "/auto/": "automobile"
+  },
+  "rate_limit_seconds": 2,
+  "priority": 1
+}
