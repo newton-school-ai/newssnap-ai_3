@@ -1,0 +1,21 @@
+{
+  "name": "Dinamalar",
+  "base_url": "https://www.dinamalar.com",
+  "article_list_url": "https://www.dinamalar.com/news/",
+  "scrape_type": "playwright",
+  "language": "ta",
+  "category_slug": "national",
+  "article_link_selector": "div.update_news a",
+  "title_selector": "h1.title",
+  "body_selector": "div.content",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/news/tamilnadu/": "national",
+    "/news/india/": "national",
+    "/news/world/": "international",
+    "/news/sports/": "sports",
+    "/news/cinema/": "entertainment"
+  },
+  "rate_limit_seconds": 3,
+  "priority": 2
+}
