@@ -1,0 +1,22 @@
+{
+  "name": "Prajavani",
+  "base_url": "https://www.prajavani.net",
+  "article_list_url": "https://www.prajavani.net/india-news",
+  "scrape_type": "playwright",
+  "language": "kn",
+  "category_slug": "national",
+  "article_link_selector": "div.title a",
+  "title_selector": "h1.title",
+  "body_selector": "div.article-body",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/karnataka-news/": "national",
+    "/india-news/": "national",
+    "/world-news/": "international",
+    "/sports-news/": "sports",
+    "/entertainment/": "entertainment",
+    "/business/": "business"
+  },
+  "rate_limit_seconds": 3,
+  "priority": 2
+}
