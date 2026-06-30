@@ -1,1 +1,154 @@
-"""NewsSnap AI - API module stub."""
+from __future__ import annotations
+
+import os
+from datetime import datetime, timezone
+from typing import Optional
+from urllib.parse import urlencode
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from src.db.session import get_db
+from src.models.user import User, UserPreference
+from src.utils.auth_utils import create_token_pair, decode_token
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    needs_onboarding: bool = False
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class GoogleCallbackRequest(BaseModel):
+    code: str
+    redirect_uri: Optional[str] = None
+
+
+@router.get("/google")
+def google_login():
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google OAuth not configured")
+
+    params = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    return {"auth_url": f"{GOOGLE_AUTH_URL}?{urlencode(params)}"}
+
+
+@router.get("/google/callback")
+async def google_callback(code: str, db: Session = Depends(get_db)):
+    return await _handle_google_code(code, GOOGLE_REDIRECT_URI, db)
+
+
+@router.post("/google/token")
+async def google_token(request: GoogleCallbackRequest, db: Session = Depends(get_db)):
+    redirect_uri = request.redirect_uri or GOOGLE_REDIRECT_URI
+    return await _handle_google_code(request.code, redirect_uri, db)
+
+
+async def _handle_google_code(code: str, redirect_uri: str, db: Session) -> TokenResponse:
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google OAuth not configured")
+
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            GOOGLE_TOKEN_URL,
+            data={
+                "code": code,
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+
+        if token_resp.status_code != 200:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to exchange authorization code")
+
+        google_tokens = token_resp.json()
+        access_token = google_tokens.get("access_token")
+
+        userinfo_resp = await client.get(
+            GOOGLE_USERINFO_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if userinfo_resp.status_code != 200:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to fetch user profile")
+
+        profile = userinfo_resp.json()
+
+    google_id = profile.get("id")
+    email = profile.get("email")
+    name = profile.get("name", email)
+    avatar = profile.get("picture")
+
+    user = _find_or_create_user(db, google_id=google_id, email=email, name=name, avatar=avatar)
+    needs_onboarding = db.scalar(select(UserPreference).where(UserPreference.user_id == user.id)) is None
+
+    tokens = create_token_pair(str(user.id), user.role)
+    return TokenResponse(
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+        needs_onboarding=needs_onboarding,
+    )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(request: RefreshRequest, db: Session = Depends(get_db)):
+    payload = decode_token(request.refresh_token)
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+
+    user_id = payload.get("sub")
+    user = db.scalar(select(User).where(User.id == user_id))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    tokens = create_token_pair(str(user.id), user.role)
+    return TokenResponse(
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+    )
+
+
+def _find_or_create_user(db: Session, google_id: str, email: str, name: str, avatar: str | None) -> User:
+    user = db.scalar(select(User).where(User.google_id == google_id))
+    if user is None:
+        user = db.scalar(select(User).where(User.email == email))
+        if user is not None:
+            user.google_id = google_id
+
+    if user is None:
+        user = User(email=email, display_name=name, avatar_url=avatar, google_id=google_id, role="reader")
+        db.add(user)
+
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(user)
+    return user
