@@ -17,6 +17,7 @@ class SourceHealth(BaseModel):
     last_scrape_time: Optional[datetime] = None
     success_count: int = 0
     error_count: int = 0
+    consecutive_failures: int = 0
     last_error: Optional[str] = None
     is_healthy: bool = True
 
@@ -123,17 +124,21 @@ class SourceRegistry:
         health = self._health.get(key)
         if health:
             health.success_count += 1
+            health.consecutive_failures = 0
             health.last_scrape_time = datetime.now(timezone.utc)
             health.is_healthy = True
 
-    def record_error(self, name: str, error: str) -> None:
+    def record_error(self, name: str, error: str, unhealthy_threshold: int = 5) -> None:
         key = self._make_key(name)
         health = self._health.get(key)
         if health:
             health.error_count += 1
+            health.consecutive_failures += 1
             health.last_scrape_time = datetime.now(timezone.utc)
             health.last_error = error
-            if health.error_count > 0 and health.success_rate < 0.5:
+            if health.consecutive_failures >= unhealthy_threshold or (
+                health.error_count > 0 and health.success_rate < 0.5
+            ):
                 health.is_healthy = False
 
     @staticmethod
