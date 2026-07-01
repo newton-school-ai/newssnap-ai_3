@@ -1,0 +1,23 @@
+{
+  "name": "Eenadu",
+  "base_url": "https://www.eenadu.net",
+  "article_list_url": "https://www.eenadu.net/telugu-news",
+  "scrape_type": "playwright",
+  "language": "te",
+  "category_slug": "national",
+  "article_link_selector": "div.thumb a",
+  "title_selector": "h1",
+  "body_selector": "div.fullstory",
+  "image_selector": "meta[property='og:image']",
+  "category_mapping": {
+    "/andhra-pradesh/": "national",
+    "/telangana/": "national",
+    "/india/": "national",
+    "/world/": "international",
+    "/sports/": "sports",
+    "/business/": "business",
+    "/cinema/": "entertainment"
+  },
+  "rate_limit_seconds": 3,
+  "priority": 2
+}
