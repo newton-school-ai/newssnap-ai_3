@@ -10,9 +10,9 @@ from src.api.auth import router as auth_router
 from src.api.sources import router as sources_router
 from src.api.users import router as users_router
 from src.db.session import SessionLocal
-from src.scrapers.source_registry import SourceRegistry
 from src.scheduler.jobs import ScrapeScheduler
 from src.scheduler.scrape_pipeline import ScrapePipeline
+from src.scrapers.source_registry import SourceRegistry
 
 
 @asynccontextmanager

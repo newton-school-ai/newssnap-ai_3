@@ -35,7 +35,6 @@ class ParsedArticle:
     publish_time: Optional[datetime]
     category: str
 
-
 @dataclass
 class NormalizedArticle:
     title: str
