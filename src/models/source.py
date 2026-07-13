@@ -23,6 +23,7 @@ class Source(UUIDMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     reliability_score: Mapped[float] = mapped_column(Float, nullable=False, server_default="1.0")
     consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     selectors: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

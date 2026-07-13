@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,7 @@ class Article(UUIDMixin, TimestampMixin, Base):
     publish_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     quality_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     embedding_vector: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    duplicate_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
     source_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sources.id", ondelete="SET NULL"), nullable=True, index=True
@@ -35,6 +36,15 @@ class Article(UUIDMixin, TimestampMixin, Base):
     story_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("stories.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    parent_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("articles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     source: Mapped[Optional["Source"]] = relationship("Source", back_populates="articles")
     story: Mapped[Optional["Story"]] = relationship("Story", back_populates="articles")
+    parent: Mapped[Optional["Article"]] = relationship(
+        "Article", back_populates="duplicates", remote_side="Article.id", foreign_keys="[Article.parent_id]"
+    )
+    duplicates: Mapped[list["Article"]] = relationship(
+        "Article", back_populates="parent", foreign_keys="[Article.parent_id]"
+    )
