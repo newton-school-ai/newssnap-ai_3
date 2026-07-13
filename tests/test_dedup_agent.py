@@ -10,15 +10,15 @@ Runs against:
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session, sessionmaker
-
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 from src.agents.dedup_agent import (
     SIMILARITY_THRESHOLD,
     DeduplicationAgent,
@@ -27,9 +27,7 @@ from src.agents.dedup_agent import (
     generate_embeddings,
 )
 from src.models.article import Article
-from src.models.base import Base
 from src.models.source import Source
-import os
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
@@ -174,7 +172,6 @@ class TestEmbeddingGeneration:
 class TestDeduplicationAgentBatch:
     def test_unique_articles_pass_through(self, db: Session):
         """Articles about totally different topics should NOT be linked."""
-        src = _make_source(db)
         agent = DeduplicationAgent()
 
         art1 = _make_article(db, "India launches new space mission to explore lunar poles")

@@ -20,11 +20,9 @@ import logging
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from uuid import UUID
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
