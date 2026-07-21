@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore
 
 from src.scheduler.scrape_pipeline import ScrapePipeline
 from src.scrapers.source_registry import SourceConfig, SourceRegistry

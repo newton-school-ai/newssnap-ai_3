@@ -5,7 +5,7 @@ import logging
 from calendar import timegm
 from datetime import datetime, timezone
 
-import feedparser
+import feedparser  # type: ignore
 import httpx
 from bs4 import BeautifulSoup
 

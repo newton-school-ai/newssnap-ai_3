@@ -100,7 +100,7 @@ def detect_language(text: str) -> Optional[str]:
     if not text or len(text.split()) < 5:
         return None
     try:
-        from langdetect import detect
+        from langdetect import detect  # type: ignore
 
         return detect(text[:2000])
     except Exception:
@@ -114,7 +114,7 @@ def detect_language(text: str) -> Optional[str]:
 
 def extract_with_newspaper(html: str, url: str) -> dict:
     try:
-        from newspaper import Article
+        from newspaper import Article  # type: ignore
 
         article = Article(url)
         article.set_html(html)
