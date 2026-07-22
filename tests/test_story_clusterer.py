@@ -70,7 +70,6 @@ def test_dbscan_clustering():
 def test_match_existing_story():
     # Use eps=0.3
     clusterer = StoryClusterer(eps=0.3)
-    db = MockSession()
 
     v1 = [1.0, 0.0, 0.0]
     v_close = [0.99, 0.1, 0.0]  # Very close to v1
@@ -87,11 +86,11 @@ def test_match_existing_story():
         title="Far", embedding_vector=_embedding_to_json(v_far), publish_time=datetime.now(timezone.utc)
     )
 
-    matched_close = clusterer.match_existing_story(a_close, [story], db)
+    matched_close = clusterer.match_existing_story(a_close, [story])
     assert matched_close == story
     assert a_close.story_id == story.id
 
-    matched_far = clusterer.match_existing_story(a_far, [story], db)
+    matched_far = clusterer.match_existing_story(a_far, [story])
     assert matched_far is None
 
 

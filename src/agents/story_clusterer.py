@@ -108,7 +108,7 @@ class StoryClusterer:
 
         return result
 
-    def match_existing_story(self, article: Article, stories: list[Story], _db: Session) -> Story | None:
+    def match_existing_story(self, article: Article, stories: list[Story]) -> Story | None:
         """
         Compare a new article's embedding against the *primary* article's embedding of each candidate story.
         Attach it if within threshold, update article_count and last_updated_at.
@@ -171,7 +171,7 @@ class StoryClusterer:
 
             remaining_articles = []
             for article in unassigned_articles:
-                matched = self.match_existing_story(article, recent_stories, db)
+                matched = self.match_existing_story(article, recent_stories)
                 if not matched:
                     remaining_articles.append(article)
 

@@ -61,7 +61,11 @@ def get_story(story_id: uuid.UUID, db: Session = Depends(get_db)):
     else:
         primary_article = max(story.articles, key=lambda a: len(a.content or ""))
 
-    related_articles = [a for a in story.articles if a.id != primary_article.id]
+    related_articles = sorted(
+        (a for a in story.articles if a.id != primary_article.id),
+        key=lambda a: a.publish_time.timestamp() if a.publish_time else float("-inf"),
+        reverse=True,
+    )
 
     return StoryResponse(
         id=story.id,
