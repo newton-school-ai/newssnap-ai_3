@@ -7,22 +7,23 @@ python-multipart==0.0.9
 websockets==12.0
 
 # Database
-sqlalchemy==2.0.35
-alembic==1.13.2
-psycopg2-binary==2.9.9
-asyncpg==0.29.0
+sqlalchemy>=2.0.35
+alembic>=1.13.2
+psycopg2-binary>=2.9.10
+asyncpg>=0.30.0
+greenlet>=3.1.1
 
 # Redis
 redis==5.0.8
 aioredis==2.0.1
 
 # Agent Orchestration
-langgraph==0.2.0
-langchain-groq==0.2.0
-langchain-core==0.3.0
+langgraph>=0.2.0
+langchain-groq>=0.2.0
+langchain-core>=0.2.27
 
 # News Scraping
-playwright==1.47.0
+playwright>=1.47.0
 beautifulsoup4==4.12.3
 httpx==0.27.2
 feedparser==6.0.11
