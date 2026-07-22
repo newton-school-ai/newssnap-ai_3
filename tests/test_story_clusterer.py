@@ -1,15 +1,11 @@
-import json
+import os
 import time
 import uuid
 from datetime import datetime, timezone
 
-import pytest
-from sqlalchemy.orm import Session
-
 from src.agents.story_clusterer import StoryClusterer, _embedding_to_json
 from src.models.article import Article
 from src.models.story import Story
-from src.models.source import Source
 
 
 class MockSession:
@@ -111,9 +107,10 @@ def test_clustering_benchmark():
         vec[cluster_idx] = 1.0
         articles.append(Article(title=f"A{i}", embedding_vector=_embedding_to_json(vec)))
 
-    start_time = time.time()
+    max_seconds = float(os.getenv("STORY_CLUSTER_BENCHMARK_MAX_SECONDS", "10.0"))
+    start_time = time.perf_counter()
     clusters = clusterer.cluster_articles(articles)
-    end_time = time.time()
+    elapsed = time.perf_counter() - start_time
 
-    assert end_time - start_time < 10.0
+    assert elapsed < max_seconds
     assert len(clusters) == 50

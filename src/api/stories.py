@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from src.db.session import get_db
-from src.models.article import Article
 from src.models.story import Story
 
 router = APIRouter(prefix="/api/stories", tags=["stories"])
@@ -56,10 +55,12 @@ def get_story(story_id: uuid.UUID, db: Session = Depends(get_db)):
     if not story or not story.articles:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Story not found")
 
-    def score_article(a: Article) -> float:
-        return a.quality_score if a.quality_score is not None else 0.0
+    scored = [a for a in story.articles if a.quality_score is not None]
+    if scored:
+        primary_article = max(scored, key=lambda a: float(a.quality_score))
+    else:
+        primary_article = max(story.articles, key=lambda a: len(a.content or ""))
 
-    primary_article = max(story.articles, key=score_article)
     related_articles = [a for a in story.articles if a.id != primary_article.id]
 
     return StoryResponse(
