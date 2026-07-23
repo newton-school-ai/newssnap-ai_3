@@ -361,7 +361,6 @@ def _make_mock_article(
     content: str = "Content",
     embedding: str | None = None,
     source_name: str | None = None,
-    source_priority: int = 1,
 ) -> MagicMock:
     row = MagicMock()
     row.id = article_id
