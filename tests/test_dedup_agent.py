@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
 import time
+import uuid
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from src.agents.dedup_agent import (
     DEFAULT_SIMILARITY_THRESHOLD,
     DEFAULT_WINDOW_HOURS,
@@ -13,6 +18,9 @@ from src.agents.dedup_agent import (
     DedupAgent,
     DeduplicationResult,
 )
+from src.models.article import Article
+from src.models.base import Base
+from src.models.source import Source
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -209,18 +217,20 @@ def test_deduplicate_result_duplicate_count_property():
 # ---------------------------------------------------------------------------
 
 
-def test_primary_is_highest_priority_source():
+def test_primary_is_lowest_priority_number():
+    # Lower source_priority = higher-priority source (SourceConfig convention:
+    # major outlets get priority=1, others priority=2+).
     base = _rand_vec(6)
     records = [
-        _make_record("low", embedding=base, priority=1),
-        _make_record("high", embedding=base, priority=5),
+        _make_record("best", embedding=base, priority=1),
+        _make_record("worst", embedding=base, priority=5),
         _make_record("mid", embedding=base, priority=3),
     ]
     result = _agent().deduplicate(records)
     assert len(result.duplicate_groups) == 1
     group = result.duplicate_groups[0]
-    assert group.primary_id == "high"
-    assert "low" in group.duplicate_ids
+    assert group.primary_id == "best"
+    assert "worst" in group.duplicate_ids
     assert "mid" in group.duplicate_ids
 
 
@@ -297,8 +307,9 @@ def test_paraphrased_articles_detected_as_duplicates():
     assert result.processed == 3
     assert len(result.duplicate_groups) == 1
     group = result.duplicate_groups[0]
-    assert group.primary_id == "orig"
-    assert group.duplicate_ids == ["para"]
+    # "para" has priority=1 (better source than "orig"'s priority=2), so it wins.
+    assert group.primary_id == "para"
+    assert group.duplicate_ids == ["orig"]
 
 def test_unique_articles_pass_through():
     agent = DedupAgent(similarity_threshold=0.85)
@@ -372,7 +383,7 @@ def test_batch_performance_100_articles():
 
 
 def _make_mock_article(
-    article_id: str,
+    article_id: str | uuid.UUID,
     title: str = "Title",
     content: str = "Content",
     embedding: str | None = None,
@@ -400,6 +411,20 @@ def _make_mock_db(rows: list) -> MagicMock:
     return db
 
 
+class _FakeSourceConfig:
+    def __init__(self, name: str, priority: int):
+        self.name = name
+        self.priority = priority
+
+
+class _FakeRegistry:
+    def __init__(self, configs: list[_FakeSourceConfig]):
+        self._configs = configs
+
+    def get_all_sources(self):
+        return self._configs
+
+
 def test_run_persists_embeddings_for_new_articles():
     base = _rand_vec(50)
     rows = [
@@ -417,32 +442,48 @@ def test_run_persists_embeddings_for_new_articles():
 
 
 def test_run_marks_duplicates_in_db():
+    # Wire real, differing priorities through a registry (not a bogus kwarg on
+    # the mock row) so this test actually exercises the min()/max() direction,
+    # rather than relying on incidental list-order tie-breaking.
     base = _rand_vec(51)
+    primary_id = uuid.uuid4()
+    dup_id = uuid.uuid4()
     rows = [
-        _make_mock_article("primary", embedding=json.dumps(base), source_priority=3),
-        _make_mock_article("dup1", embedding=json.dumps(base), source_priority=1),
+        _make_mock_article(primary_id, embedding=json.dumps(base), source_name="Times of India"),
+        _make_mock_article(dup_id, embedding=json.dumps(base), source_name="Regional Daily"),
     ]
     db = _make_mock_db(rows)
+    registry = _FakeRegistry([
+        _FakeSourceConfig("Times of India", priority=1),
+        _FakeSourceConfig("Regional Daily", priority=3),
+    ])
 
     agent = DedupAgent()
-    agent.run(db)
+    agent.run(db, registry=registry)
 
-    dup_row = next(r for r in rows if r.id == "dup1")
-    assert dup_row.duplicate_of_id == "primary"
+    dup_row = next(r for r in rows if r.id == dup_id)
+    assert dup_row.duplicate_of_id == primary_id
+    assert isinstance(dup_row.duplicate_of_id, uuid.UUID)
 
 
 def test_run_does_not_mark_primary_as_duplicate():
     base = _rand_vec(52)
+    primary_id = uuid.uuid4()
+    dup_id = uuid.uuid4()
     rows = [
-        _make_mock_article("primary", embedding=json.dumps(base), source_priority=5),
-        _make_mock_article("dup1", embedding=json.dumps(base), source_priority=1),
+        _make_mock_article(primary_id, embedding=json.dumps(base), source_name="Times of India"),
+        _make_mock_article(dup_id, embedding=json.dumps(base), source_name="Regional Daily"),
     ]
     db = _make_mock_db(rows)
+    registry = _FakeRegistry([
+        _FakeSourceConfig("Times of India", priority=1),
+        _FakeSourceConfig("Regional Daily", priority=5),
+    ])
 
     agent = DedupAgent()
-    agent.run(db)
+    agent.run(db, registry=registry)
 
-    primary_row = next(r for r in rows if r.id == "primary")
+    primary_row = next(r for r in rows if r.id == primary_id)
     assert primary_row.duplicate_of_id is None
 
 
@@ -451,3 +492,102 @@ def test_run_returns_deduplication_result():
     result = DedupAgent().run(db)
     assert isinstance(result, DeduplicationResult)
     assert result.processed == 0
+
+
+# ---------------------------------------------------------------------------
+# run() against a real Postgres DB with real UUID primary keys.
+#
+# The mocked run() tests above use MagicMock rows, so on their own they don't
+# prove duplicate_of_id round-trips correctly through the actual UUID(as_uuid=True)
+# column. This test uses real Article/Source rows to confirm duplicate_of_id
+# ends up as an actual uuid.UUID both in-session (expire_on_commit=False) and
+# on a fresh re-query, and that priority=1 correctly wins as primary. Skipped
+# automatically if no Postgres is reachable.
+# ---------------------------------------------------------------------------
+
+_TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL", "postgresql://newssnap:newssnap@localhost:5432/newssnap"
+)
+
+
+def _real_db_session():
+    engine = create_engine(_TEST_DATABASE_URL)
+    try:
+        conn = engine.connect()
+    except Exception:
+        pytest.skip("No reachable Postgres for real-DB dedup test")
+    Base.metadata.create_all(bind=engine)
+    session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+    session = session_factory()
+    conn.close()
+    return session
+
+
+def test_run_sets_real_uuid_duplicate_of_id_against_postgres():
+    db = _real_db_session()
+    try:
+        good_source = Source(
+            id=uuid.uuid4(), name="Times of India", url="https://timesofindia.com",
+            scrape_type="rss", language="en", category_slug="national",
+        )
+        lesser_source = Source(
+            id=uuid.uuid4(), name="Regional Daily", url="https://regionaldaily.com",
+            scrape_type="rss", language="en", category_slug="national",
+        )
+        db.add_all([good_source, lesser_source])
+        db.flush()
+
+        base = _rand_vec(200)
+        art_good = Article(
+            id=uuid.uuid4(), url=f"https://a.com/{uuid.uuid4()}", title="Budget announced",
+            content="Content A", language="en", category_slug="national",
+            publish_time=datetime.now(timezone.utc), source_id=good_source.id,
+            embedding_vector=json.dumps(base),
+        )
+        art_lesser = Article(
+            id=uuid.uuid4(), url=f"https://b.com/{uuid.uuid4()}", title="Budget announced today",
+            content="Content B", language="en", category_slug="national",
+            publish_time=datetime.now(timezone.utc), source_id=lesser_source.id,
+            embedding_vector=json.dumps(base),
+        )
+        db.add_all([art_good, art_lesser])
+        db.commit()
+
+        registry = _FakeRegistry([
+            _FakeSourceConfig("Times of India", priority=1),
+            _FakeSourceConfig("Regional Daily", priority=2),
+        ])
+
+        agent = DedupAgent()
+        agent.run(db, registry=registry)
+
+        db.refresh(art_good)
+        db.refresh(art_lesser)
+
+        # Priority 1 (Times of India) must win as primary, priority 2 must defer to it.
+        assert art_good.duplicate_of_id is None
+        assert art_lesser.duplicate_of_id == art_good.id
+        assert isinstance(art_lesser.duplicate_of_id, uuid.UUID)
+
+        # Fresh session / fresh query, to rule out any expire_on_commit artifact.
+        db.close()
+        fresh = _real_db_session()
+        try:
+            reloaded = fresh.get(Article, art_lesser.id)
+            assert isinstance(reloaded.duplicate_of_id, uuid.UUID)
+            assert reloaded.duplicate_of_id == art_good.id
+        finally:
+            fresh.rollback()
+            fresh.query(Article).filter(Article.id.in_([art_good.id, art_lesser.id])).delete(
+                synchronize_session=False
+            )
+            fresh.query(Source).filter(Source.id.in_([good_source.id, lesser_source.id])).delete(
+                synchronize_session=False
+            )
+            fresh.commit()
+            fresh.close()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()

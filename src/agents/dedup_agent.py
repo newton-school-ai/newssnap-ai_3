@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -128,7 +129,11 @@ class DedupAgent:
         for members in clusters.values():
             if len(members) < 2:
                 continue
-            primary_idx = max(members, key=lambda idx: articles[idx].source_priority)
+            # Lower source_priority = higher-priority source. Every SourceConfig in
+            # src/scrapers/source_configs/ uses priority=1 for top-tier outlets (The
+            # Hindu, Times of India, NDTV, ...) and priority=2+ for the rest, so the
+            # primary must be the *minimum* priority number, not the maximum.
+            primary_idx = min(members, key=lambda idx: articles[idx].source_priority)
             duplicate_ids = [articles[k].article_id for k in members if k != primary_idx]
             groups.append(DedupGroup(
                 primary_id=articles[primary_idx].article_id,
@@ -198,10 +203,15 @@ class DedupAgent:
                 row.embedding_vector = json.dumps(record.embedding)
 
         for group in result.duplicate_groups:
+            # duplicate_of_id is UUID(as_uuid=True); article_id here is str(row.id),
+            # so it must be cast back to a real uuid.UUID before assignment. With
+            # SessionLocal's expire_on_commit=False, the ORM attribute otherwise
+            # stays a plain str in-memory after commit instead of a UUID.
+            primary_uuid = uuid.UUID(group.primary_id)
             for dup_id in group.duplicate_ids:
                 row = id_to_row.get(dup_id)
                 if row is not None:
-                    row.duplicate_of_id = group.primary_id
+                    row.duplicate_of_id = primary_uuid
 
         db.commit()
         logger.info(
