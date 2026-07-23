@@ -35,6 +35,9 @@ class Article(UUIDMixin, TimestampMixin, Base):
     story_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("stories.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    duplicate_of_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("articles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     source: Mapped[Optional["Source"]] = relationship("Source", back_populates="articles")
     story: Mapped[Optional["Story"]] = relationship("Story", back_populates="articles")
