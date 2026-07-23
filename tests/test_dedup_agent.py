@@ -265,24 +265,40 @@ def test_two_independent_duplicate_groups():
 
 def test_paraphrased_articles_detected_as_duplicates():
     agent = DedupAgent(similarity_threshold=0.85)
-    original = "Prime Minister Modi inaugurated the new expressway in Maharashtra today."
-    paraphrase = "PM Modi today inaugurated a new expressway in Maharashtra."
-    different = "ISRO successfully launches new satellite into lunar orbit after three attempts."
+
+    emb_a = _rand_vec(123)
+    emb_b = _near_vec(emb_a, noise=0.001)
+    emb_c = _rand_vec(456)
 
     records = [
-        _make_record("orig", title="Expressway", content=original),
-        _make_record("para", title="Modi inaugurates", content=paraphrase),
-        _make_record("diff", title="Space", content=different),
+        _make_record(
+            "orig",
+            title="Expressway",
+            content="Prime Minister Modi inaugurated the new expressway in Maharashtra today.",
+            priority=2,
+        ),
+        _make_record(
+            "para",
+            title="Modi inaugurates",
+            content="PM Modi today inaugurated a new expressway in Maharashtra.",
+            priority=1,
+        ),
+        _make_record(
+            "diff",
+            title="Space",
+            content="ISRO successfully launches new satellite into lunar orbit after three attempts.",
+            priority=1,
+        ),
     ]
-    result = agent.deduplicate(records)
+
+    with patch.object(agent, "generate_embeddings_batch", return_value=[emb_a, emb_b, emb_c]):
+        result = agent.deduplicate(records)
 
     assert result.processed == 3
-    paired_ids = {g.primary_id for g in result.duplicate_groups} | {
-        d for g in result.duplicate_groups for d in g.duplicate_ids
-    }
-    assert "orig" in paired_ids or "para" in paired_ids
-    assert "diff" not in {d for g in result.duplicate_groups for d in g.duplicate_ids if g.primary_id != "diff"}
-
+    assert len(result.duplicate_groups) == 1
+    group = result.duplicate_groups[0]
+    assert group.primary_id == "orig"
+    assert group.duplicate_ids == ["para"]
 
 def test_unique_articles_pass_through():
     agent = DedupAgent(similarity_threshold=0.85)
