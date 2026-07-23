@@ -116,10 +116,9 @@ class DedupAgent:
             if px != py:
                 parent[px] = py
 
-        for i in range(n):
-            for j in range(i + 1, n):
-                if sim_matrix[i, j] >= self.threshold:
-                    union(i, j)
+        pairs = np.argwhere(np.triu(sim_matrix, k=1) >= self.threshold)
+        for i, j in pairs:
+            union(int(i), int(j))
 
         clusters: dict[int, list[int]] = defaultdict(list)
         for i in range(n):
