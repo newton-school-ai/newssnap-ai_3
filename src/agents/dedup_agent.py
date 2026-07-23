@@ -143,16 +143,21 @@ class DedupAgent:
         )
 
     def run(self, db: Session, registry=None) -> DeduplicationResult:
-        from sqlalchemy import select
+        from sqlalchemy import or_, select
 
         from src.models.article import Article
 
         cutoff = datetime.now(timezone.utc) - timedelta(hours=self.window_hours)
         rows = db.scalars(
             select(Article)
-            .where(Article.publish_time >= cutoff)
+            .where(
+                or_(
+                    Article.publish_time >= cutoff,
+                    (Article.publish_time.is_(None) & (Article.created_at >= cutoff)),
+                )
+            )
             .where(Article.duplicate_of_id.is_(None))
-            .order_by(Article.publish_time.desc())
+            .order_by(Article.publish_time.desc().nulls_last())
         ).all()
 
         source_priority: dict[str, int] = {}
