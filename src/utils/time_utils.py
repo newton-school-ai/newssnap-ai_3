@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from dateutil import parser as dateutil_parser
+from dateutil import parser as dateutil_parser  # type: ignore
 
 
 def parse_datetime(value: str | None) -> Optional[datetime]:
