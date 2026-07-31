@@ -1,4 +1,5 @@
 """NewsSnap AI - Stories API module."""
+
 from __future__ import annotations
 
 import uuid
@@ -9,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from src.agents.story_clusterer import StoryClusterer
 from src.db.session import get_db
 from src.models.story import Story
 
@@ -46,20 +48,16 @@ class StoryResponse(BaseModel):
 
 @router.get("/{story_id}", response_model=StoryResponse)
 def get_story(story_id: uuid.UUID, db: Session = Depends(get_db)):
-    story = db.execute(
-        select(Story)
-        .options(joinedload(Story.articles))
-        .where(Story.id == story_id)
-    ).unique().scalar_one_or_none()
+    story = (
+        db.execute(select(Story).options(joinedload(Story.articles)).where(Story.id == story_id))
+        .unique()
+        .scalar_one_or_none()
+    )
 
     if not story or not story.articles:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Story not found")
 
-    scored = [a for a in story.articles if a.quality_score is not None]
-    if scored:
-        primary_article = max(scored, key=lambda a: float(a.quality_score))
-    else:
-        primary_article = max(story.articles, key=lambda a: len(a.content or ""))
+    primary_article = StoryClusterer.get_primary_article(story.articles)
 
     related_articles = sorted(
         (a for a in story.articles if a.id != primary_article.id),

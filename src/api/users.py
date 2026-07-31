@@ -104,7 +104,12 @@ def update_profile(
         user.display_name = request.display_name
 
     pref = db.scalar(select(UserPreference).where(UserPreference.user_id == user.id))
-    if request.preferred_languages is not None or request.preferred_categories is not None or request.notification_enabled is not None or request.fcm_token is not None:
+    if (
+        request.preferred_languages is not None
+        or request.preferred_categories is not None
+        or request.notification_enabled is not None
+        or request.fcm_token is not None
+    ):
         if pref is None:
             pref = UserPreference(user_id=user.id)
             db.add(pref)

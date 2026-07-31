@@ -25,7 +25,9 @@ class User(UUIDMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    preference: Mapped[Optional["UserPreference"]] = relationship("UserPreference", back_populates="user", uselist=False)
+    preference: Mapped[Optional["UserPreference"]] = relationship(
+        "UserPreference", back_populates="user", uselist=False
+    )
     interactions: Mapped[list["Interaction"]] = relationship("Interaction", back_populates="user")
     comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="user")
     notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="user")

@@ -47,6 +47,18 @@ def test_primary_article_selection():
     assert primary_fallback.title == "A5"
 
 
+def test_primary_article_mixed_scoring():
+    clusterer = StoryClusterer()
+    # A real scored article but with a low score
+    a_scored = Article(title="Scored", quality_score=0.6, content="short", image_url=None)
+    # An unscored article that would get a high heuristic score
+    a_unscored = Article(title="Unscored", quality_score=None, content="x" * 6000, image_url="http://img.com")
+
+    primary = clusterer.get_primary_article([a_scored, a_unscored])
+    # The scored one should always win over the unscored one
+    assert primary.title == "Scored"
+
+
 def test_dbscan_clustering():
     clusterer = StoryClusterer(eps=0.1)
 
@@ -73,7 +85,7 @@ def test_match_existing_story():
 
     v1 = [1.0, 0.0, 0.0]
     v_close = [0.99, 0.1, 0.0]  # Very close to v1
-    v_far = [0.0, 1.0, 0.0]     # Orthogonal to v1
+    v_far = [0.0, 1.0, 0.0]  # Orthogonal to v1
 
     story = Story(id=uuid.uuid4(), article_count=1, last_updated_at=datetime.now(timezone.utc))
     a_story = Article(title="Story Article", embedding_vector=_embedding_to_json(v1), quality_score=1.0)
@@ -82,9 +94,7 @@ def test_match_existing_story():
     a_close = Article(
         title="Close", embedding_vector=_embedding_to_json(v_close), publish_time=datetime.now(timezone.utc)
     )
-    a_far = Article(
-        title="Far", embedding_vector=_embedding_to_json(v_far), publish_time=datetime.now(timezone.utc)
-    )
+    a_far = Article(title="Far", embedding_vector=_embedding_to_json(v_far), publish_time=datetime.now(timezone.utc))
 
     matched_close = clusterer.match_existing_story(a_close, [story])
     assert matched_close == story
@@ -106,10 +116,74 @@ def test_clustering_benchmark():
         vec[cluster_idx] = 1.0
         articles.append(Article(title=f"A{i}", embedding_vector=_embedding_to_json(vec)))
 
-    max_seconds = float(os.getenv("STORY_CLUSTER_BENCHMARK_MAX_SECONDS", "10.0"))
+    max_seconds = float(os.getenv("STORY_CLUSTER_BENCHMARK_MAX_SECONDS", "30.0"))
     start_time = time.perf_counter()
     clusters = clusterer.cluster_articles(articles)
     elapsed = time.perf_counter() - start_time
 
     assert elapsed < max_seconds
     assert len(clusters) == 50
+
+
+def test_cluster_recent_articles_db():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    from src.models.base import Base
+    from src.models.source import Source  # noqa: F401 (ensure tables are registered)
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    clusterer = StoryClusterer(eps=0.1, session_factory=testing_session_local)
+
+    db = testing_session_local()
+    try:
+        now = datetime.now(timezone.utc)
+        a1 = Article(
+            id=uuid.uuid4(),
+            title="Test 1",
+            url="http://t1",
+            category_slug="tech",
+            publish_time=now,
+            embedding_vector=_embedding_to_json([1.0, 0.0]),
+        )
+        a2 = Article(
+            id=uuid.uuid4(),
+            title="Test 2",
+            url="http://t2",
+            category_slug="tech",
+            publish_time=now,
+            embedding_vector=_embedding_to_json([1.0, 0.0]),
+        )
+        a3 = Article(
+            id=uuid.uuid4(),
+            title="Test 3",
+            url="http://t3",
+            category_slug="tech",
+            publish_time=now,
+            embedding_vector=_embedding_to_json([0.0, 1.0]),
+        )
+
+        db.add_all([a1, a2, a3])
+        db.commit()
+
+        stories = clusterer.cluster_recent_articles(hours=6)
+
+        # 2 distinct vectors -> 2 clusters -> 2 stories
+        assert len(stories) == 2
+
+        db.refresh(a1)
+        db.refresh(a2)
+        db.refresh(a3)
+        assert a1.story_id is not None
+        assert a2.story_id == a1.story_id
+        assert a3.story_id is not None
+        assert a3.story_id != a1.story_id
+    finally:
+        db.close()

@@ -21,12 +21,15 @@ logger = logging.getLogger(__name__)
 # import once Issue 9 (dedup agent) is merged.
 _model = None
 
+
 def _get_model():
     global _model
     if _model is None:
         from sentence_transformers import SentenceTransformer
+
         _model = SentenceTransformer("all-MiniLM-L6-v2")
     return _model
+
 
 def generate_embedding(text: str) -> list[float]:
     model = _get_model()
@@ -34,11 +37,14 @@ def generate_embedding(text: str) -> list[float]:
     embedding = model.encode(text, normalize_embeddings=True)
     return embedding.tolist()
 
+
 def _embedding_to_json(vector: list[float]) -> str:
     return json.dumps(vector)
 
+
 def _embedding_from_json(json_str: str) -> list[float]:
     return json.loads(json_str)
+
 
 def _ensure_embedding(article: Article) -> list[float]:
     if article.embedding_vector is None:
@@ -50,17 +56,13 @@ def _ensure_embedding(article: Article) -> list[float]:
 
 
 class StoryClusterer:
-    def __init__(
-        self,
-        eps: float = 0.3,
-        min_samples: int = 2,
-        session_factory: Callable[[], Session] = SessionLocal
-    ):
+    def __init__(self, eps: float = 0.3, min_samples: int = 2, session_factory: Callable[[], Session] = SessionLocal):
         self.eps = eps
         self.min_samples = min_samples
         self.session_factory = session_factory
 
-    def get_primary_article(self, articles: list[Article]) -> Article:
+    @staticmethod
+    def get_primary_article(articles: list[Article]) -> Article:
         """
         Primary-article selection: highest `quality_score`; if null on all candidates,
         fall back to a heuristic combining content length, Source.reliability_score,
@@ -69,20 +71,21 @@ class StoryClusterer:
         if not articles:
             raise ValueError("No articles provided to select primary from.")
 
-        def score_article(a: Article) -> float:
-            if a.quality_score is not None:
-                return a.quality_score
+        scored = [a for a in articles if a.quality_score is not None]
+        if scored:
+            return max(scored, key=lambda a: float(a.quality_score))
 
+        def score_fallback(a: Article) -> float:
             score = 0.0
             if a.content:
                 score += min(len(a.content) / 1000.0, 5.0)
             if a.image_url:
                 score += 2.0
-            if a.source and hasattr(a.source, 'reliability_score') and a.source.reliability_score is not None:
-                score += a.source.reliability_score
+            if a.source and getattr(a.source, "reliability_score", None) is not None:
+                score += float(a.source.reliability_score)
             return score
 
-        return max(articles, key=score_article)
+        return max(articles, key=score_fallback)
 
     def cluster_articles(self, articles: list[Article]) -> list[list[Article]]:
         """
@@ -119,7 +122,7 @@ class StoryClusterer:
         article_emb = np.array([_ensure_embedding(article)])
 
         best_story = None
-        best_dist = float('inf')
+        best_dist = float("inf")
 
         for story in stories:
             if not story.articles:
@@ -154,20 +157,21 @@ class StoryClusterer:
             cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
             unassigned_articles = db.scalars(
-                select(Article).where(
-                    Article.story_id.is_(None),
-                    Article.publish_time >= cutoff
-                )
+                select(Article).where(Article.story_id.is_(None), Article.publish_time >= cutoff)
             ).all()
 
             if not unassigned_articles:
                 return []
 
-            recent_stories = db.scalars(
-                select(Story)
-                .options(joinedload(Story.articles).joinedload(Article.source))
-                .where(Story.last_updated_at >= cutoff)
-            ).unique().all()
+            recent_stories = (
+                db.scalars(
+                    select(Story)
+                    .options(joinedload(Story.articles).joinedload(Article.source))
+                    .where(Story.last_updated_at >= cutoff)
+                )
+                .unique()
+                .all()
+            )
 
             remaining_articles = []
             for article in unassigned_articles:
@@ -194,7 +198,7 @@ class StoryClusterer:
                         importance_score=primary.quality_score if primary.quality_score is not None else 0.0,
                         article_count=len(cluster),
                         first_seen_at=first_seen,
-                        last_updated_at=last_updated
+                        last_updated_at=last_updated,
                     )
                     db.add(story)
                     for a in cluster:
