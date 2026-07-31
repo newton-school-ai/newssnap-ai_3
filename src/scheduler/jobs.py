@@ -46,10 +46,7 @@ class ScrapeScheduler:
         delay_step = SCRAPE_INTERVAL_SECONDS / len(sources)
         logger.info("Scheduling %d sources with %.1fs stagger", len(sources), delay_step)
 
-        tasks = [
-            self._run_source_with_delay(config, i * delay_step)
-            for i, config in enumerate(sources)
-        ]
+        tasks = [self._run_source_with_delay(config, i * delay_step) for i, config in enumerate(sources)]
         await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _run_source_with_delay(self, config: SourceConfig, delay: float) -> None:

@@ -153,9 +153,10 @@ async def test_pipeline_uses_rss_scraper_for_rss_sources():
     session = _make_session()
     pipeline = ScrapePipeline(_make_registry(config), MagicMock(return_value=session))
 
-    with patch("src.scheduler.scrape_pipeline.RSSScraper") as mock_rss, patch(
-        "src.scheduler.scrape_pipeline.StaticScraper"
-    ) as mock_static:
+    with (
+        patch("src.scheduler.scrape_pipeline.RSSScraper") as mock_rss,
+        patch("src.scheduler.scrape_pipeline.StaticScraper") as mock_static,
+    ):
         mock_rss.return_value.scrape_source = AsyncMock(return_value=[])
         await pipeline.run_source(config)
 
@@ -169,9 +170,10 @@ async def test_pipeline_uses_static_scraper_for_api_sources():
     session = _make_session()
     pipeline = ScrapePipeline(_make_registry(config), MagicMock(return_value=session))
 
-    with patch("src.scheduler.scrape_pipeline.StaticScraper") as mock_static, patch(
-        "src.scheduler.scrape_pipeline.RSSScraper"
-    ) as mock_rss:
+    with (
+        patch("src.scheduler.scrape_pipeline.StaticScraper") as mock_static,
+        patch("src.scheduler.scrape_pipeline.RSSScraper") as mock_rss,
+    ):
         mock_static.return_value.scrape_source = AsyncMock(return_value=[])
         await pipeline.run_source(config)
 

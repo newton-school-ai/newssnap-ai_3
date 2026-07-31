@@ -24,12 +24,12 @@ _SHORT_NOISE_RE = re.compile(
     r"more from|sponsored by|brought to you by)\b"
 )
 
+
 def strip_html(html: str) -> str:
     if not html:
         return ""
     soup = BeautifulSoup(html, "html.parser")
-    return soup.get_text(separator="\n", strip = True)
-
+    return soup.get_text(separator="\n", strip=True)
 
 
 def remove_noise(text: str) -> str:

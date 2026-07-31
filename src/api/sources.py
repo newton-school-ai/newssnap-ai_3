@@ -68,7 +68,9 @@ def list_sources(
                 ),
                 health=SourceHealthResponse(
                     name=src.name,
-                    last_scrape_time=health.last_scrape_time.isoformat() if health and health.last_scrape_time else None,
+                    last_scrape_time=health.last_scrape_time.isoformat()
+                    if health and health.last_scrape_time
+                    else None,
                     success_count=health.success_count if health else 0,
                     error_count=health.error_count if health else 0,
                     success_rate=health.success_rate if health else 1.0,

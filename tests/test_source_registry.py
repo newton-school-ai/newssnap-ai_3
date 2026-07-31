@@ -90,9 +90,11 @@ def test_get_sources_by_language():
 def test_load_from_db_rows():
     tmp_dir = _create_temp_configs([])
     registry = SourceRegistry(configs_dir=tmp_dir)
-    registry.load_from_db_rows([
-        {"name": "DB Source", "url": "https://db.example.com", "scrape_type": "rss", "language": "en"},
-    ])
+    registry.load_from_db_rows(
+        [
+            {"name": "DB Source", "url": "https://db.example.com", "scrape_type": "rss", "language": "en"},
+        ]
+    )
     assert len(registry.get_all_sources()) == 1
     assert registry.get_source("DB Source") is not None
 
@@ -100,9 +102,11 @@ def test_load_from_db_rows():
 def test_db_rows_do_not_overwrite_json():
     tmp_dir = _create_temp_configs([SAMPLE_CONFIG])
     registry = SourceRegistry(configs_dir=tmp_dir)
-    registry.load_from_db_rows([
-        {"name": "Test Source", "url": "https://other.com", "scrape_type": "static"},
-    ])
+    registry.load_from_db_rows(
+        [
+            {"name": "Test Source", "url": "https://other.com", "scrape_type": "static"},
+        ]
+    )
     source = registry.get_source("Test Source")
     assert source.base_url == "https://example.com"
 

@@ -17,8 +17,29 @@ MIN_COMPLETE_WORDS = 100
 
 CONTENT_CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "sports": ["cricket", "football", "tennis", "ipl", "match", "tournament", "player", "stadium", "goal", "wicket"],
-    "technology": ["smartphone", "laptop", "startup", "software", "app", "ai", "artificial intelligence", "tech", "gadget"],
-    "business": ["market", "stock", "economy", "rupee", "gdp", "inflation", "budget", "shares", "investment", "company"],
+    "technology": [
+        "smartphone",
+        "laptop",
+        "startup",
+        "software",
+        "app",
+        "ai",
+        "artificial intelligence",
+        "tech",
+        "gadget",
+    ],
+    "business": [
+        "market",
+        "stock",
+        "economy",
+        "rupee",
+        "gdp",
+        "inflation",
+        "budget",
+        "shares",
+        "investment",
+        "company",
+    ],
     "entertainment": ["bollywood", "movie", "film", "actor", "actress", "celebrity", "ott", "series", "award"],
     "health": ["hospital", "doctor", "vaccine", "disease", "health", "medicine", "patient", "surgery", "covid"],
     "international": ["us", "usa", "china", "pakistan", "russia", "ukraine", "un", "nato", "global", "world"],
@@ -34,6 +55,7 @@ class ParsedArticle:
     source_url: str
     publish_time: Optional[datetime]
     category: str
+
 
 @dataclass
 class NormalizedArticle:

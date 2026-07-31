@@ -24,6 +24,7 @@ MIN_FULL_CONTENT_LENGTH = 200
 
 class RSSScraper:
     """Parses RSS 2.0 / Atom feeds and normalizes entries into the shared ParsedArticle schema."""
+
     def __init__(
         self,
         static_scraper: StaticScraper | None = None,
