@@ -1,5 +1,6 @@
 """NewsSnap AI - Application settings and configuration."""
 
+import os
 from enum import Enum
 
 
@@ -49,3 +50,29 @@ class ScrapeType(str, Enum):
 class UserRole(str, Enum):
     READER = "reader"
     ADMIN = "admin"
+
+
+# ---------------------------------------------------------------------------
+# LLM configuration (Groq)
+# ---------------------------------------------------------------------------
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_TEMPERATURE = float(os.getenv("GROQ_TEMPERATURE", "0.3"))
+GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "512"))
+GROQ_TIMEOUT_SECONDS = int(os.getenv("GROQ_TIMEOUT_SECONDS", "30"))
+
+
+# ---------------------------------------------------------------------------
+# Summarization configuration
+# ---------------------------------------------------------------------------
+
+SUMMARY_MIN_WORDS = int(os.getenv("SUMMARY_MIN_WORDS", "40"))
+SUMMARY_MAX_WORDS = int(os.getenv("SUMMARY_MAX_WORDS", "100"))
+SUMMARY_TARGET_WORDS = int(os.getenv("SUMMARY_TARGET_WORDS", "70"))
+SUMMARY_TARGET_MIN_WORDS = int(os.getenv("SUMMARY_TARGET_MIN_WORDS", "60"))
+SUMMARY_TARGET_MAX_WORDS = int(os.getenv("SUMMARY_TARGET_MAX_WORDS", "80"))
+SUMMARY_MAX_RETRIES = int(os.getenv("SUMMARY_MAX_RETRIES", "2"))
+SUMMARY_MIN_FACTS = int(os.getenv("SUMMARY_MIN_FACTS", "3"))
+SUMMARY_BATCH_WORKERS = int(os.getenv("SUMMARY_BATCH_WORKERS", "8"))
+SUMMARY_INPUT_CHAR_LIMIT = int(os.getenv("SUMMARY_INPUT_CHAR_LIMIT", "12000"))
