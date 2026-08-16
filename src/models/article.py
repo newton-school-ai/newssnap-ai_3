@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -27,6 +27,8 @@ class Article(UUIDMixin, TimestampMixin, Base):
     author: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     publish_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     quality_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    is_rejected: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", index=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     embedding_vector: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     source_id: Mapped[Optional[str]] = mapped_column(
